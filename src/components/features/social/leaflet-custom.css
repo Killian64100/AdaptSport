@@ -1,0 +1,67 @@
+/* Leaflet Custom Styles for Helix Dark Mode */
+
+/* Import Leaflet base styles */
+@import 'leaflet/dist/leaflet.css';
+
+/* Custom marker styling */
+.custom-marker {
+  background: transparent;
+  border: none;
+}
+
+.custom-marker-label {
+  background: rgba(0, 229, 255, 0.9);
+  border: 1px solid rgba(0, 229, 255, 0.5);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 14px;
+  font-weight: bold;
+  color: white;
+  white-space: nowrap;
+  width: fit-content;
+  min-width: max-content;
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
+}
+
+.custom-marker-label.contact {
+  background: rgba(0, 230, 118, 0.9);
+  border-color: rgba(0, 230, 118, 0.5);
+  box-shadow: 0 0 20px rgba(0, 230, 118, 0.4);
+}
+
+.custom-marker-label.selected {
+  background: rgba(0, 230, 118, 1);
+  border-color: rgba(0, 230, 118, 1);
+  box-shadow: 0 0 40px rgba(0, 230, 118, 0.9);
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+/* Leaflet controls dark mode */
+.leaflet-control-zoom a {
+  background-color: rgba(20, 20, 30, 0.9) !important;
+  color: #00E5FF !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background-color: rgba(30, 30, 40, 0.95) !important;
+}
+
+.leaflet-control-attribution {
+  background-color: rgba(20, 20, 30, 0.8) !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+  font-size: 10px !important;
+}
+
+.leaflet-control-attribution a {
+  color: #00E5FF !important;
+}

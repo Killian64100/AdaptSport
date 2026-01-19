@@ -1,0 +1,44 @@
+{
+  "user_id": "demo-user-01",
+  "profile": { 
+    "name": "Alex", 
+    "age": 29, 
+    "sport": "Running & Strength",
+    "gender": "male",
+    "activity_level": "active"
+  },
+  "today": {
+    "date": "2026-01-17",
+    "recovery": 72,
+    "strain": 10.2,
+    "hrv": 58,
+    "rhr": 52,
+    "sleep": "7h30",
+    "spo2": 97,
+    "calories": 2145
+  },
+  "history": [
+    { "date": "11/01", "recovery": 85, "strain": 8.5, "hrv": 65, "rhr": 50, "sleep": "8h12", "spo2": 98, "calories": 2100 },
+    { "date": "12/01", "recovery": 78, "strain": 12.4, "hrv": 62, "rhr": 51, "sleep": "7h48", "spo2": 98, "calories": 2450 },
+    { "date": "13/01", "recovery": 82, "strain": 18.2, "hrv": 64, "rhr": 50, "sleep": "7h12", "spo2": 97, "calories": 3600 },
+    { "date": "14/01", "recovery": 42, "strain": 14.5, "hrv": 45, "rhr": 58, "sleep": "5h30", "spo2": 96, "calories": 2800 },
+    { "date": "15/01", "recovery": 35, "strain": 5.1, "hrv": 38, "rhr": 60, "sleep": "5h12", "spo2": 95, "calories": 1900 },
+    { "date": "16/01", "recovery": 65, "strain": 9.8, "hrv": 54, "rhr": 54, "sleep": "7h54", "spo2": 97, "calories": 2250 },
+    { "date": "17/01", "recovery": 72, "strain": 10.2, "hrv": 58, "rhr": 52, "sleep": "7h30", "spo2": 97, "calories": 2145 }
+  ],
+  "metrics": {
+    "hrv": { "name": "HRV", "unit": "ms", "insights": ["Autonomic recovery indicator", "Reflects nervous system balance"] },
+    "rhr": { "name": "RHR", "unit": "bpm", "insights": ["Resting heart rate", "Lower = improved fitness"] },
+    "sleep": { "name": "Sleep", "unit": "h", "insights": ["Total sleep duration", "Optimal: 7-9h per night"] },
+    "spo2": { "name": "SpO2", "unit": "%", "insights": ["Blood oxygen saturation", "Normal: >95%"] },
+    "strain": { "name": "Strain", "unit": "/21", "insights": ["Cumulative cardiovascular load", "Higher = more intense effort"] },
+    "recovery": { "name": "Recovery", "unit": "%", "insights": ["Overall recovery score", "70%+ = ready to perform"] },
+    "calories": { "name": "Calories", "unit": "kcal", "insights": ["Total energy expenditure", "Varies with activity"] }
+  },
+  "benchmarks": {
+    "hrv": { "cohort_mean": 55, "cohort_stddev": 12, "percentile": 65 },
+    "rhr": { "cohort_mean": 58, "cohort_stddev": 8, "percentile": 72 },
+    "sleep": { "cohort_mean": "7h12", "cohort_stddev": "0h48", "percentile": 68 },
+    "recovery": { "cohort_mean": 68, "cohort_stddev": 15, "percentile": 62 }
+  }
+}
