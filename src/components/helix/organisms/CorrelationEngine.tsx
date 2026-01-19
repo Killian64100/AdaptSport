@@ -31,11 +31,11 @@ interface Metric {
 }
 
 const availableMetrics: Metric[] = [
-  { id: 'hrv', name: 'VFC', unit: 'ms', color: '#00E5FF' },
+  { id: 'hrv', name: 'HRV', unit: 'ms', color: '#00E5FF' },
   { id: 'strain', name: 'Strain', unit: '/21', color: '#FF6E40' },
-  { id: 'sleep', name: 'Sommeil', unit: 'h', color: '#7C4DFF' },
+  { id: 'sleep', name: 'Sleep', unit: 'h', color: '#7C4DFF' },
   { id: 'calories', name: 'Calories', unit: 'kcal', color: '#FFC400' },
-  { id: 'recovery', name: 'Récupération', unit: '%', color: '#69F0AE' },
+  { id: 'recovery', name: 'Recovery', unit: '%', color: '#69F0AE' },
 ]
 
 // Convertit un format horaire ("7h30") en nombre décimal (7.5)
@@ -92,21 +92,21 @@ const generateInsight = (metric1: string, metric2: string, correlation: number, 
   
   const absCorr = Math.abs(correlation)
   const isPositive = correlation > 0
-  const strength = absCorr > 0.7 ? 'forte' : absCorr > 0.4 ? 'modérée' : 'faible'
+  const strength = absCorr > 0.7 ? 'strong' : absCorr > 0.4 ? 'moderate' : 'weak'
   
   const insights: Record<string, string> = {
     'hrv-strain': `Your HRV decreases by ${Math.round(absCorr * 100)}% as your Strain increases. This strong negative correlation (r = ${correlation.toFixed(2)}) suggests you should prioritize recovery on high-load days.`,
     'hrv-sleep': `Your HRV improves by ${Math.round(absCorr * 100)}% with quality sleep. This ${isPositive ? 'positive' : 'negative'} ${strength} correlation (r = ${correlation.toFixed(2)}) confirms the importance of rest for your recovery.`,
     'strain-recovery': `Your recovery ${isPositive ? 'increases' : 'decreases'} proportionally to your Strain. ${strength} correlation (r = ${correlation.toFixed(2)}). ${!isPositive ? 'High Strain negatively impacts your ability to recover.' : 'Your body adapts well to the load.'}`,
     'sleep-recovery': `Your recovery is ${absCorr > 0.5 ? 'strongly' : 'moderately'} linked to your sleep (r = ${correlation.toFixed(2)}). Each additional hour of sleep improves your recovery score by ~${Math.round(absCorr * 10)}%.`,
-    'glucose-strain': `Votre glycémie ${isPositive ? 'augmente' : 'fluctue'} avec votre Strain. Corrélation ${strength} (r = ${correlation.toFixed(2)}). Surveillez votre nutrition les jours d'entraînement intensif.`,
-    'spo2-sleep': `Votre saturation en oxygène reste ${absCorr > 0.3 ? 'corrélée' : 'stable'} avec votre sommeil (r = ${correlation.toFixed(2)}). ${absCorr < 0.3 ? 'Aucun signe d\'apnée nocturne détecté.' : 'Excellente oxygénation nocturne.'}`,
+    'glucose-strain': `Your glucose ${isPositive ? 'increases' : 'fluctuates'} with your Strain. ${strength} correlation (r = ${correlation.toFixed(2)}). Monitor your nutrition on high-intensity training days.`,
+    'spo2-sleep': `Your oxygen saturation remains ${absCorr > 0.3 ? 'correlated' : 'stable'} with your sleep (r = ${correlation.toFixed(2)}). ${absCorr < 0.3 ? 'No signs of nocturnal apnea detected.' : 'Excellent nighttime oxygenation.'}`,
   }
   
   const key = `${metric1}-${metric2}`
   const reverseKey = `${metric2}-${metric1}`
   
-  return insights[key] || insights[reverseKey] || `Analyse de corrélation entre ${metric1Name} et ${metric2Name} : corrélation ${strength} (r = ${correlation.toFixed(2)}). ${isPositive ? 'Ces métriques évoluent dans le même sens.' : 'Ces métriques évoluent en sens inverse.'}`
+  return insights[key] || insights[reverseKey] || `Correlation analysis between ${metric1Name} and ${metric2Name}: ${strength} correlation (r = ${correlation.toFixed(2)}). ${isPositive ? 'These metrics evolve in the same direction.' : 'These metrics evolve in opposite directions.'}`
 }
 
 // Custom Tooltip
@@ -411,7 +411,7 @@ export default function CorrelationEngine() {
             <Sparkle size={20} weight="fill" className="text-brand-electric" />
           </motion.div>
           <h3 className="font-display text-body-l font-semibold text-text-highest">
-            Insight IA
+            Insight
           </h3>
         </div>
 

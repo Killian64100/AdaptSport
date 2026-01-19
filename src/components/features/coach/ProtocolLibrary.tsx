@@ -41,8 +41,8 @@ export default function ProtocolLibrary() {
   const { userProtocols, removeProtocol } = useProtocolStore()
   const [activeCategory, setActiveCategory] = useState('all')
 
-  // Si l'utilisateur n'a pas encore de protocoles, utiliser les protocoles par défaut
-  const protocols: ProtocolDisplay[] = (userProtocols.length > 0 ? userProtocols : protocolsData).map(p => ({
+  // Bibliothèque vide par défaut - se remplit uniquement via l'ajout dynamique de l'IA
+  const protocols: ProtocolDisplay[] = userProtocols.map(p => ({
     id: p.id,
     name: p.name,
     category: p.category as 'breathing' | 'cold' | 'sleep' | 'nutrition',
@@ -91,26 +91,42 @@ export default function ProtocolLibrary() {
           const progress = (protocol.completed / protocol.total) * 100
 
           return (
-            <motion.button
+            <motion.div
               key={protocol.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => router.push(`/coach/library/${protocol.id}`)}
-              className="relative rounded-xl bg-surface-card p-6 text-left transition-colors hover:bg-surface-elevated"
+              className="relative rounded-xl bg-surface-card p-6 text-left transition-colors hover:bg-surface-elevated cursor-pointer"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  router.push(`/coach/library/${protocol.id}`)
+                }
+              }}
             >
               {/* Delete Button */}
               {userProtocols.length > 0 && (
-                <motion.button
+                <motion.div
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
                   onClick={(e) => handleDelete(e, protocol.id)}
-                  className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-surface-elevated text-signal-critical transition-colors hover:bg-signal-critical hover:text-surface-void"
+                  className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-surface-elevated text-signal-critical transition-colors hover:bg-signal-critical hover:text-surface-void cursor-pointer"
                   title="Delete protocol"
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      handleDelete(e as any, protocol.id)
+                    }
+                  }}
                 >
                   <Trash size={16} weight="bold" />
-                </motion.button>
+                </motion.div>
               )}
 
               <div className="flex items-start gap-4">
@@ -154,7 +170,7 @@ export default function ProtocolLibrary() {
                   </div>
                 </div>
               </div>
-            </motion.button>
+            </motion.div>
           )
         })}
       </div>

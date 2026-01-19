@@ -35,7 +35,7 @@
          ▼
 ┌─────────────────┐
 │   REASON        │  AI-Driven Analysis
-│                 │  • OpenRouter (Gemini 2.0 Flash)
+│                 │  • OpenRouter (Llama 3.3 70B)
 │  Multi-Phase    │  • Tavily scientific research
 │  RAG Pipeline   │  • Statistical correlation engine
 │                 │  • Risk assessment algorithms
@@ -95,7 +95,7 @@
 | **Testing** | Vitest + RTL | 1.1.3 | Unit & component tests |
 
 ### AI & APIs
-- **OpenRouter API:** Multi-model LLM gateway (Gemini 2.0 Flash)
+- **OpenRouter API:** Multi-model LLM gateway (Llama 3.3 70B Instruct)
 - **Tavily API:** Cross-document scientific research synthesis
 - **Architecture:** 3-phase RAG (Retrieve-Augment-Generate) with tool calling
 

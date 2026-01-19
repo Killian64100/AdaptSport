@@ -1,11 +1,10 @@
 'use client'
 
-import { useState, use } from 'react'
+import { use, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowLeft } from '@phosphor-icons/react'
+import { ArrowLeft, CheckCircle } from '@phosphor-icons/react'
 import { useRouter } from 'next/navigation'
-import ProtocolTimer from '@/components/features/coach/ProtocolTimer'
-import { getProtocolById } from '@/data/protocols'
+import { useProtocolStore } from '@/store/useProtocolStore'
 
 interface ProtocolDetailPageProps {
   params: Promise<{ id: string }>
@@ -14,25 +13,21 @@ interface ProtocolDetailPageProps {
 export default function ProtocolDetailPage({ params }: ProtocolDetailPageProps) {
   const router = useRouter()
   const { id } = use(params)
-  const [isActive, setIsActive] = useState(false)
+  const { userProtocols } = useProtocolStore()
 
-  // Récupérer les données du protocole depuis le fichier centralisé
-  const protocolData = getProtocolById(id)
+  // Récupérer le protocole depuis le store Zustand (protocoles dynamiques)
+  const protocolData = userProtocols.find(p => p.id === id)
   
-  // Rediriger si protocole non trouvé
+  // Rediriger si protocole non trouvé (dans useEffect pour éviter setState pendant render)
+  useEffect(() => {
+    if (!protocolData) {
+      router.push('/coach?tab=library')
+    }
+  }, [protocolData, router])
+  
+  // Return early si pas de protocole (avant la redirection)
   if (!protocolData) {
-    router.push('/coach')
     return null
-  }
-
-  const protocol = {
-    name: protocolData.name,
-    description: protocolData.description,
-    duration: protocolData.durationSeconds,
-    category: protocolData.category,
-    steps: protocolData.steps,
-    benefits: protocolData.benefits,
-    references: protocolData.references,
   }
 
   return (
@@ -53,44 +48,36 @@ export default function ProtocolDetailPage({ params }: ProtocolDetailPageProps) 
         </button>
 
         <h1 className="font-display text-display-s text-text-highest">
-          {protocol.name}
+          {protocolData.name}
         </h1>
         <p className="mt-2 text-body-m text-text-medium">
-          {protocol.description}
+          {protocolData.description}
         </p>
       </motion.header>
 
       <div className="space-y-6 px-4">
-        {/* Timer or Static Icon */}
-        {protocol.duration > 0 ? (
-          <ProtocolTimer
-            duration={protocol.duration}
-            isActive={isActive}
-            onToggle={() => setIsActive(!isActive)}
-          />
-        ) : (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex flex-col items-center justify-center rounded-xl bg-surface-card py-12"
-          >
-            <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-surface-elevated">
-              {protocol.category === 'sleep' && (
-                <span className="text-5xl">🌙</span>
-              )}
-              {protocol.category === 'nutrition' && (
-                <span className="text-5xl">🍽️</span>
-              )}
-              {protocol.category === 'cold' && (
-                <span className="text-5xl">❄️</span>
-              )}
-              {protocol.category === 'breathing' && (
-                <span className="text-5xl">🌬️</span>
-              )}
-            </div>
-            <p className="text-body-m text-text-medium">Protocole sans durée fixe</p>
-          </motion.div>
-        )}
+        {/* Category Badge */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex items-center justify-center gap-3 rounded-xl bg-surface-card py-8"
+        >
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-surface-elevated">
+            {protocolData.category === 'sleep' && <span className="text-4xl">🌙</span>}
+            {protocolData.category === 'nutrition' && <span className="text-4xl">🍽️</span>}
+            {protocolData.category === 'cold' && <span className="text-4xl">❄️</span>}
+            {protocolData.category === 'breathing' && <span className="text-4xl">🌬️</span>}
+            {protocolData.category === 'mobility' && <span className="text-4xl">🧘</span>}
+            {protocolData.category === 'stretching' && <span className="text-4xl">🤸</span>}
+            {protocolData.category === 'activity' && <span className="text-4xl">🏃</span>}
+          </div>
+          <div className="text-center">
+            <p className="text-caption font-medium uppercase tracking-wider text-text-low">
+              {protocolData.category}
+            </p>
+            <p className="mt-1 text-body-m text-text-high">{protocolData.duration}</p>
+          </div>
+        </motion.div>
 
         {/* Steps */}
         <motion.div
@@ -102,14 +89,20 @@ export default function ProtocolDetailPage({ params }: ProtocolDetailPageProps) 
           <h3 className="mb-4 font-display text-body-l font-semibold text-text-highest">
             Steps
           </h3>
-          <ol className="space-y-3">
-            {protocol.steps.map((step, index) => (
-              <li key={index} className="flex gap-3">
-                <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-brand-electric text-caption font-bold text-surface-void">
+          <ol className="space-y-4">
+            {protocolData.steps.map((step, index) => (
+              <motion.li
+                key={index}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 + index * 0.1 }}
+                className="flex gap-4"
+              >
+                <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-brand-electric text-body-s font-bold text-surface-void">
                   {index + 1}
                 </span>
-                <span className="text-body-m text-text-high">{step}</span>
-              </li>
+                <span className="flex-1 pt-1 text-body-m leading-relaxed text-text-high">{step}</span>
+              </motion.li>
             ))}
           </ol>
         </motion.div>
@@ -124,34 +117,42 @@ export default function ProtocolDetailPage({ params }: ProtocolDetailPageProps) 
           <h3 className="mb-4 font-display text-body-l font-semibold text-text-highest">
             Benefits
           </h3>
-          <ul className="space-y-2">
-            {protocol.benefits.map((benefit, index) => (
-              <li key={index} className="flex items-start gap-3">
-                <div className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-signal-success" />
-                <span className="text-body-m text-text-high">{benefit}</span>
-              </li>
+          <ul className="space-y-3">
+            {protocolData.benefits.map((benefit, index) => (
+              <motion.li
+                key={index}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4 + index * 0.08 }}
+                className="flex items-start gap-3"
+              >
+                <CheckCircle size={20} weight="fill" className="mt-0.5 flex-shrink-0 text-signal-success" />
+                <span className="flex-1 text-body-m leading-relaxed text-text-high">{benefit}</span>
+              </motion.li>
             ))}
           </ul>
         </motion.div>
 
         {/* References */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="rounded-xl bg-surface-card p-6"
-        >
-          <h3 className="mb-4 font-display text-body-l font-semibold text-text-highest">
-            Scientific References
-          </h3>
-          <ul className="space-y-2">
-            {protocol.references.map((ref, index) => (
-              <li key={index} className="text-body-s text-text-medium">
-                {ref}
-              </li>
-            ))}
-          </ul>
-        </motion.div>
+        {protocolData.references && protocolData.references.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="rounded-xl bg-surface-card p-6"
+          >
+            <h3 className="mb-4 font-display text-body-l font-semibold text-text-highest">
+              Scientific References
+            </h3>
+            <ul className="space-y-2">
+              {protocolData.references.map((ref, index) => (
+                <li key={index} className="text-body-s text-text-medium">
+                  • {ref}
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+        )}
       </div>
     </div>
   )

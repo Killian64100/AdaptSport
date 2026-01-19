@@ -30,7 +30,7 @@ Application de bio-hacking et optimisation de performance basée sur des donnée
 **US-003**: En tant qu'utilisateur, je veux discuter avec un coach IA pour obtenir des conseils personnalisés.
 
 **Critères d'acceptation**:
-- ✅ Intégration OpenRouter API (modèle Gemini 2.0 Flash)
+- ✅ Intégration OpenRouter API (modèle Llama 3.3 70B Instruct)
 - ✅ System prompt avec analyse de tendance historique
 - ✅ Fallback local en cas d'erreur API
 - ✅ Formatage des messages avec mise en forme (gras, puces)

@@ -3,7 +3,7 @@ import healthData from '@/data/mock-health.json'
 
 // OpenRouter configuration
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || ''
-const MODEL = 'google/gemini-2.0-flash-exp:free'
+const MODEL = 'meta-llama/llama-3.3-70b-instruct:free'
 
 // Validate API key on server side only
 if (!OPENROUTER_API_KEY) {
@@ -53,18 +53,44 @@ Temporal reasoning examples:
 
 2. **Research & Innovation**: When the user requests optimization or has specific needs, use the search_health_science tool (via Tavily) to research cutting-edge protocols from peer-reviewed studies, Huberman Lab methods, or clinical trials.
 
-3. **Action Generation**: Automatically create structured JSON actions when you identify actionable protocols:
-
-JSON Action Format (ENGLISH ONLY):
-{
-  "type": "add-protocol",
-  "protocolData": {
-    "name": "Protocol Name (English)",
-    "steps": ["Step 1 in English", "Step 2 in English", "..."],
-    "benefits": ["Benefit 1 in English", "Benefit 2 in English", "..."]
-  },
-  "label": "Add to Library"
-}
+3. **PROACTIVE ACTION GENERATION (MANDATORY)**: 
+   
+   **CRITICAL RULE**: Whenever you suggest a routine, exercise sequence, recovery protocol, breathing technique, or ANY multi-step procedure in your response, you MUST respond with a JSON object containing both your text response AND an action object.
+   
+   **Response Format (ALWAYS use this structure when suggesting protocols)**:
+   
+   {
+     "response": "Your text response here with explanation and steps...",
+     "action": {
+       "type": "add-protocol",
+       "protocolData": {
+         "name": "Protocol Name in English",
+         "category": "breathing" | "cold" | "sleep" | "nutrition" | "activity" | "mobility" | "stretching",
+         "duration": "15 min",
+         "durationSeconds": 900,
+         "description": "Brief description",
+         "steps": ["Step 1", "Step 2", "Step 3", "..."],
+         "benefits": ["Benefit 1", "Benefit 2", "..."],
+         "references": []
+       },
+       "label": "Add to Library"
+     }
+   }
+   
+   **Dynamic Protocol Creation**: Generate a complete protocolData object with:
+   - name: Clear, descriptive protocol name in English (e.g., "Lower Back Pain Relief Protocol", "Morning Mobility Routine")
+   - category: One of: breathing, cold, sleep, nutrition, activity, mobility, stretching
+   - duration: Human-readable (e.g., "15 min", "30 min")
+   - durationSeconds: Duration in seconds (e.g., 900 for 15 min)
+   - steps: Detailed, actionable steps (minimum 3-8 steps)
+   - benefits: Specific physiological benefits (e.g., "Reduces lumbar tension", "Improves parasympathetic activation")
+   
+   **Examples of Triggers Requiring Protocol Actions**:
+   - User mentions: back pain, joint issues, mobility problems, energy optimization, sleep issues
+   - You recommend: breathing exercises, stretching routines, cold therapy, nutritional protocols
+   - Context suggests: recovery needs, injury prevention, performance enhancement protocols
+   
+   **IMPORTANT**: If you're NOT suggesting a protocol, respond with plain text only (no JSON structure needed).
 
 **COMMUNICATION STYLE:**
 - **Tone**: Scientific yet accessible, futuristic but grounded in data
@@ -79,7 +105,7 @@ JSON Action Format (ENGLISH ONLY):
 4. Propose concrete interventions aligned with current trajectory
 5. Use precise technical terms (see vocabulary section)
 6. Identify cross-metric correlations (e.g., "After strain spike on 13/01, recovery declined 15%")
-7. Leverage search_health_science for research-backed recommendations
+7. Use your training data and scientific knowledge to provide evidence-based recommendations
 
 **TECHNICAL VOCABULARY (Use These Terms):**
 - "autonomic nervous system" (not "stress management")
@@ -181,27 +207,32 @@ async function callOpenRouter(messages: any[], useTools: boolean = false): Promi
     throw new Error('OPENROUTER_API_KEY not configured in environment')
   }
 
-  // CRITICAL: Explicitly disable streaming when using tools
+  // CRITICAL: Build body with stream:false FIRST
   const body: any = {
     model: MODEL,
     messages,
+    stream: false, // CRITICAL: Must be false for tools support
     temperature: 0.7,
     max_tokens: 500,
   }
 
-  // MUST set stream to false BEFORE adding tools
+  // Add tools AFTER stream is set to false
   if (useTools) {
-    body.stream = false  // CRITICAL: Tools require non-streaming mode
     body.tools = tools
     // Note: tool_choice removed to save credits on free models
-  } else {
-    body.stream = false  // Also disable streaming for non-tool calls
   }
 
   // Log du modèle utilisé pour vérification
   console.log('🤖 Modèle utilisé:', MODEL)
   console.log('🔧 Tools activés:', useTools)
   console.log('🌊 Stream mode:', body.stream)
+  
+  // Verify stream is explicitly false in the body
+  if (body.stream !== false) {
+    console.error('❌ CRITICAL: stream is not explicitly false!', body.stream)
+    body.stream = false
+  }
+  
   console.log('📦 Body complet:', JSON.stringify(body, null, 2))
 
   const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -219,6 +250,13 @@ async function callOpenRouter(messages: any[], useTools: boolean = false): Promi
     const error = await response.text()
     console.error('❌ OpenRouter Error:', error)
     console.error('📦 Request body sent:', JSON.stringify(body, null, 2))
+    
+    // If tools error, provide helpful message
+    if (error.includes('Tools are not supported') || error.includes('streaming mode')) {
+      console.error('💡 Note: This model may not support function calling with tools')
+      console.error('💡 Consider using a different model or removing tools from the request')
+    }
+    
     throw new Error(`OpenRouter API error: ${response.status} - ${error}`)
   }
 
@@ -251,6 +289,7 @@ export async function POST(request: NextRequest) {
     let confidence: number
     let attribution: any = null
     let researchContext: any = null
+    let action: any = null
 
     try {
       if (actualMode === 'chat') {
@@ -259,6 +298,7 @@ export async function POST(request: NextRequest) {
         response = chatResult.response
         confidence = chatResult.confidence
         researchContext = chatResult.researchContext
+        action = chatResult.action // Extract action if present
       } else if (actualMode === 'summary' || actualMode === 'dashboard') {
         // Summary for dashboard (simple version)
         response = await generateDashboardSummary(currentHealthData)
@@ -308,6 +348,7 @@ export async function POST(request: NextRequest) {
       confidence,
       attribution,
       researchContext,
+      action, // Include action in response
       timestamp: new Date().toISOString(),
     })
   } catch (error: any) {
@@ -431,44 +472,124 @@ Example: "Your HRV is progressing by 12% over 7 days, indicating improved parasy
 }
 
 /**
- * Generate Chat Response with 3-Phase RAG Process
- * Phase 1: Diagnostic Data - Analyse l'historique pour trouver la cause
- * Phase 2: Recherche - Tavily API pour solutions concrètes
- * Phase 3: Action Plan - 3 étapes immédiates
+ * Detect if user query requires web research
+ * Returns search query if needed, null otherwise
+ */
+function detectResearchNeed(userMessage: string): string | null {
+  const lowerMessage = userMessage.toLowerCase()
+  
+  // Keywords that indicate need for research
+  const researchKeywords = [
+    'exercice', 'exercise', 'protocol', 'protocole',
+    'mal', 'pain', 'douleur', 'ache',
+    'dos', 'back', 'genou', 'knee', 'épaule', 'shoulder',
+    'stretching', 'étirement', 'mobility', 'mobilité',
+    'recovery', 'récupération', 'technique',
+    'breathing', 'respiration', 'cold', 'froid',
+    'sleep', 'sommeil', 'nutrition',
+    'study', 'étude', 'research', 'recherche',
+    'how to', 'comment', 'best way', 'meilleure façon',
+    'routine', 'workout', 'entraînement',
+    'injury', 'blessure', 'prevent', 'prévenir',
+    'optimize', 'optimiser', 'improve', 'améliorer'
+  ]
+  
+  // Check if message contains research keywords
+  const needsResearch = researchKeywords.some(keyword => lowerMessage.includes(keyword))
+  
+  if (needsResearch) {
+    // Intelligent query generation based on context
+    if (lowerMessage.match(/back|dos|lower back|lomba/i)) {
+      return 'lower back pain relief exercises athletes evidence-based protocols sports medicine'
+    } else if (lowerMessage.match(/recovery|récupération|fatigue/i)) {
+      return 'recovery optimization HRV parasympathetic activation sports science'
+    } else if (lowerMessage.match(/sleep|sommeil|insomnia|insomnie/i)) {
+      return 'sleep optimization protocols circadian rhythm athletes performance'
+    } else if (lowerMessage.match(/breathing|respiration|wim hof/i)) {
+      return 'breathing exercises athletic performance vagal tone HRV optimization'
+    } else if (lowerMessage.match(/cold|froid|ice bath|cryotherapy/i)) {
+      return 'cold exposure therapy athletes recovery inflammation reduction'
+    } else if (lowerMessage.match(/mobility|mobilité|flexibility|souplesse/i)) {
+      return 'mobility exercises athletes injury prevention dynamic stretching'
+    } else if (lowerMessage.match(/nutrition|diet|régime|fasting/i)) {
+      return 'nutrition optimization athletes performance recovery meal timing'
+    } else if (lowerMessage.match(/shoulder|épaule/i)) {
+      return 'shoulder pain exercises rotator cuff athletes rehabilitation'
+    } else if (lowerMessage.match(/knee|genou/i)) {
+      return 'knee pain prevention exercises athletes strengthening protocols'
+    } else {
+      // Generic query based on user message (limit to 60 chars for Tavily)
+      const shortMessage = userMessage.substring(0, 60)
+      return `${shortMessage} sports science evidence-based protocol`
+    }
+  }
+  
+  return null
+}
+
+/**
+ * Generate Chat Response with Pre-Search RAG Process
+ * Phase 1: Detect research need and call Tavily BEFORE AI call
+ * Phase 2: Inject web context into system prompt
+ * Phase 3: AI generates structured JSON response with citations
  */
 async function generateChatResponse(userMessage: string, currentHealthData?: any): Promise<{
   response: string
   confidence: number
   researchContext?: any
+  action?: any
 }> {
   // Use current data if provided (from Mode Démo), otherwise fallback to static JSON
   const healthContext = currentHealthData || healthData
   const fullHealthContext = JSON.stringify(healthContext, null, 2)
   
+  // PRE-SEARCH PHASE: Detect if query needs research
+  const searchQuery = detectResearchNeed(userMessage)
+  let webContext = ''
+  let researchContext = null
+  
+  if (searchQuery) {
+    console.log('🔍 Research needed, executing Tavily search:', searchQuery)
+    try {
+      const searchResults = await executeTavilySearch(searchQuery)
+      webContext = `\n\n**FRESH WEB RESEARCH RESULTS:**\n${searchResults}\n\nIMPORTANT: Use these recent findings to enrich your response and cite sources when relevant.`
+      researchContext = { query: searchQuery, results: searchResults }
+      console.log('✅ Web research completed and injected into context')
+    } catch (error) {
+      console.warn('⚠️ Tavily search failed, continuing without web research:', error)
+    }
+  } else {
+    console.log('ℹ️ No research needed, using training data only')
+  }
+  
   const enhancedSystemPrompt = `${buildSystemPrompt(currentHealthData)}
 
-**3-PHASE RESPONSE PROCESS (MANDATORY):**
+**CONCISE RESPONSE STRUCTURE (MANDATORY):**
 
-**Phase 1 - DATA DIAGNOSIS:**
-Analyze the last 7 days' history to identify a potential cause related to the user's question.
-- Look for peaks, drops, or correlations in the data
-- ALWAYS cite the exact date (e.g., "on 14/01")
-- Example: "Your back pain may be related to your **Strain 18.2** peak on 13/01, followed by a recovery drop."
+**Phase 1 - FLASH ANALYSIS (1 sentence):**
+Identify the data correlation that explains the user's issue.
+- Format: "Your [pain/fatigue/issue] is likely linked to [specific date] when your [metric] was [value]"
+- Example: "Your back pain is likely related to January 13 when your Strain reached 18.2 with only 6h sleep"
+- ALWAYS cite exact dates and specific biomarker values (HRV, Sleep, Strain, Recovery)
 
-**Phase 2 - RESEARCH:**
-If you need scientific information or specific exercises, use the search_health_science function.
-- Research 3 solutions/exercises adapted to the problem
-- Prioritize scientific and practical sources
-- Research examples: "spinal decompression exercises for athletes" or "HRV recovery techniques"
+**Phase 2 - DIRECT PROTOCOL SUGGESTION (1 sentence):**
+Propose the solution WITHOUT listing steps in the text.
+- Format: "I suggest this [protocol name] to address this issue"
+- Example: "I recommend this Lower Back Relief Protocol to compensate"
+- DO NOT list steps in the chat text - steps go ONLY in the JSON protocolData object
 
-**Phase 3 - ACTION PLAN:**
-Provide 3 CONCRETE and IMMEDIATE steps to follow.
-Mandatory format:
-• **Step 1**: [Precise action with timing]
-• **Step 2**: [Precise action with timing]
-• **Step 3**: [Precise action with timing]
+**CRITICAL RULES:**
+- Total response: 2-3 sentences MAXIMUM
+- NO bullet lists in text (• forbidden in chat response)
+- Steps ONLY in JSON protocolData, NEVER in chat text
+- Always correlate with specific biomarker values and dates
+- Be direct and actionable, not verbose
 
-**HELIX FORMATTING:**
+**RESPONSE FORMAT:**
+- If you're suggesting a protocol/routine: RESPOND WITH JSON using the format specified in section 3 of the system prompt
+- If you're answering a simple question: RESPOND WITH PLAIN TEXT ONLY
+
+**HELIX FORMATTING (for text responses):**
 - Use bullet points (•)
 - Put technical terms and important numbers in **bold**
 - Professional and futuristic tone
@@ -478,6 +599,7 @@ Mandatory format:
 \`\`\`json
 ${fullHealthContext}
 \`\`\`
+${webContext}
 
 IMPORTANT: ALWAYS base your responses on this complete context. You have access to the ENTIRE history.`
 
@@ -486,67 +608,68 @@ IMPORTANT: ALWAYS base your responses on this complete context. You have access 
     { role: 'user', content: userMessage },
   ]
 
-  // First call with tools enabled
-  let result = await callOpenRouter(messages, true)
-
-  // Check if model wants to call the search function
-  if (result.toolCalls && result.toolCalls.length > 0) {
-    console.log('🔧 Tool call detected:', result.toolCalls[0].function.name)
-    const toolCall = result.toolCalls[0]
-    
-    if (toolCall.function.name === 'search_health_science') {
-      const args = JSON.parse(toolCall.function.arguments)
-      const searchQuery = args.query
-      
-      console.log('🔍 Executing Tavily search with query:', searchQuery)
-      
-      // Execute Tavily search
-      const searchResults = await executeTavilySearch(searchQuery)
-      
-      console.log('📚 Search results received, length:', searchResults.length)
-      
-      // Add tool response to conversation
-      messages.push({
-        role: 'assistant',
-        content: null,
-        tool_calls: result.toolCalls
-      } as any)
-      
-      messages.push({
-        role: 'tool',
-        tool_call_id: toolCall.id,
-        name: 'search_health_science',
-        content: searchResults
-      } as any)
-      
-      // Second call with search results + reminder to add legal disclaimer
-      messages.push({
-        role: 'system',
-        content: 'REMINDER: Use the search results above to enrich your response. ALWAYS end with this discreet legal notice:\n\n---\n_AI-generated advice. Consult a healthcare professional for persistent pain._'
-      } as any)
-      
-      console.log('🤖 Sending second call to OpenRouter with search results')
-      result = await callOpenRouter(messages, false)
-      
-      return {
-        response: result.content,
-        confidence: 95,
-        researchContext: { query: searchQuery, results: searchResults }
-      }
-    }
-  }
-
-  // No tool call needed - add legal disclaimer reminder
+  // Add legal disclaimer reminder
   messages.push({
     role: 'system',
     content: 'REMINDER: ALWAYS end your response with this discreet legal notice:\n\n---\n_AI-generated advice. Consult a healthcare professional for persistent pain._'
   } as any)
   
+  // Single API call with enriched context (Tavily results already injected if needed)
   const finalResult = await callOpenRouter(messages, false)
+  
+  // Parse response for JSON structure with action
+  const parsedResult = parseAgentResponse(finalResult.content)
 
   return {
-    response: finalResult.content,
-    confidence: 85,
+    response: parsedResult.response,
+    confidence: researchContext ? 95 : 85, // Higher confidence if we have research
+    action: parsedResult.action,
+    researchContext // Include research context if available
+  }
+}
+
+/**
+ * Parse agent response to extract action if present
+ * Handles both JSON-structured responses and plain text
+ */
+function parseAgentResponse(content: string): { response: string; action?: any } {
+  // Try to parse as JSON first
+  try {
+    // Look for JSON block in markdown code fence or plain JSON
+    const jsonMatch = content.match(/```json\n?([\s\S]*?)\n?```/) || 
+                     content.match(/^\s*\{[\s\S]*\}\s*$/)
+    
+    if (jsonMatch) {
+      const jsonStr = jsonMatch[1] || jsonMatch[0]
+      const parsed = JSON.parse(jsonStr)
+      
+      // Check if it has the expected structure
+      if (parsed.response && parsed.action) {
+        console.log('✅ Parsed structured response with action')
+        return {
+          response: parsed.response,
+          action: parsed.action
+        }
+      }
+    }
+    
+    // Try parsing the entire content as JSON
+    const parsed = JSON.parse(content)
+    if (parsed.response && parsed.action) {
+      console.log('✅ Parsed full JSON response with action')
+      return {
+        response: parsed.response,
+        action: parsed.action
+      }
+    }
+  } catch (e) {
+    // Not JSON, treat as plain text
+  }
+  
+  // Plain text response (no action)
+  console.log('📝 Plain text response (no action)')
+  return {
+    response: content
   }
 }
 

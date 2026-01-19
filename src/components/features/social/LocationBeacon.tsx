@@ -202,10 +202,10 @@ export default function LocationBeacon() {
           >
             <div className="flex items-center justify-between mb-3">
               <span className="text-body-xs font-semibold text-signal-success">
-                Protection Active
+                Active Protection
               </span>
               <span className="text-caption text-text-secondary">
-                Depuis: {beaconStartTime?.toLocaleTimeString('fr-FR')}
+                Since: {beaconStartTime?.toLocaleTimeString('en-US')}
               </span>
             </div>
 
@@ -220,7 +220,7 @@ export default function LocationBeacon() {
             </motion.div>
 
             <p className="text-caption text-text-secondary mt-2">
-              {selectedContacts.length} {selectedContacts.length === 1 ? 'contact' : 'contacts'} en alerte. Protection arrêt auto après 4h.
+              {selectedContacts.length} {selectedContacts.length === 1 ? 'contact' : 'contacts'} alerted. Auto-stop in 4h.
             </p>
           </motion.div>
         )}

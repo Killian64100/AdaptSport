@@ -187,6 +187,7 @@ export default function AIChat() {
         content: data.response,
         confidence: data.confidence,
         attribution: data.attribution,
+        action: data.action, // Include action if present
         timestamp: new Date(),
       }
 

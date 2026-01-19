@@ -35,10 +35,10 @@ export default function DailyBriefing() {
     }
   }, [recovery, strain, hrv, rhr, sleep, spo2, calories, useStaticFallback])
 
-  // Fetch AI-generated briefing on mount
+  // Fetch AI-generated briefing on mount and when health metrics change
   useEffect(() => {
     fetchBriefing()
-  }, [])
+  }, [recovery, hrv, sleep]) // Re-generate when key metrics change
 
   const fetchBriefing = async () => {
     setIsLoading(true)

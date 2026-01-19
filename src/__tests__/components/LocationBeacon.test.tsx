@@ -284,7 +284,7 @@ describe('LocationBeacon Component', () => {
       fireEvent.click(grantButton)
       
       await waitFor(() => {
-        expect(screen.getByText(/Depuis:/)).toBeInTheDocument()
+        expect(screen.getByText(/Since:/)).toBeInTheDocument()
       })
     })
   })
