@@ -341,10 +341,9 @@ MIT License — See [LICENSE](LICENSE) for details.
 
 ## 👨‍💻 Author
 
-**Killian Boisselle**
+**Killian Renard**
 - GitHub: [@Killian64100](https://github.com/Killian64100)
-- Portfolio: [Coming Soon]
-- Email: [Your Email]
+- Email: killianrenard@hotmail.com
 
 ---
 
